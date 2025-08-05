@@ -1,0 +1,98 @@
+# .github/workflows/bootstrap.yml
+
+name: 🚀 Bootstrap NestJS Service
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write # allow the workflow to push changes to the repository
+
+    # don’t run in the template itself
+    if: github.repository != 'HSM-SANOSOFT/hsm-ms-template'
+
+    steps:
+      # 1) Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.TOKEN_GITHUB }}
+          persist-credentials: true
+
+      # 2) Setup Node.js (latest LTS) – *no pnpm cache here*
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+
+      # 3) Install PNPM globally so it's immediately available
+      - name: Install pnpm
+        run: npm install -g pnpm@latest
+
+      # 4) Install Nest CLI
+      - name: Install Nest CLI
+        run: npm install -g @nestjs/cli
+
+      # 5) Scaffold Nest in-place
+      - name: Scaffold NestJS project
+        run: nest new . --skip-install --package-manager pnpm
+
+      # 6) Copy only Dockerfiles & script.sh
+      - name: Copy Dockerfiles & script
+        run: |
+          cp .github/boilerplate/Dockerfile.dev .
+          cp .github/boilerplate/Dockerfile.prod .
+          cp .github/boilerplate/script.sh .
+
+      # 7) Overwrite lint/prettier/tsconfig
+      - name: Overwrite config files
+        run: |
+          cp -f .github/boilerplate/.prettierrc .
+          cp -f .github/boilerplate/eslint.config.mjs .
+          cp -f .github/boilerplate/tsconfig.json .
+
+      # 8) Copy filters/ & config/ into src/
+      - name: Copy filters, database & config dirs
+        run: |
+          rm -rf src/filters src/config
+          cp -R .github/boilerplate/filters src/filters
+          cp -R .github/boilerplate/config src/config
+          cp -R .github/boilerplate/database src/database
+
+      # 9) Overwrite src/main.ts
+      - name: Overwrite src/main.ts & src/app.module.ts
+        run: |
+          cp -f .github/boilerplate/main.ts src/main.ts
+          cp -f .github/boilerplate/app.module.ts src/app.module.ts
+
+      # 10) Run your dependencyInstall.sh
+      - name: Run dependency install script
+        run: bash .github/boilerplate/dependencyInstall.sh
+
+      # 11) Copy shared build-deploy workflow
+      - name: Copy build-deploy workflow
+        run: |
+          mkdir -p .github/workflows
+          cp .github/boilerplate/build-deploy.yml .github/workflows/build-deploy.yml
+
+      # 12) Remove boilerplate folder
+      - name: Clean up boilerplate
+        run: rm -rf .github/boilerplate
+
+      # 13) Remove this bootstrap workflow so it only runs once
+      - name: Remove bootstrap workflow
+        run: |
+          rm .github/workflows/bootstrap.yml
+          rm .github/workflows/CICD-Microservices.yml
+
+      # 14) Commit everything back to the repo
+      - name: Commit bootstrap changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'chore: bootstrap NestJS microservice'
