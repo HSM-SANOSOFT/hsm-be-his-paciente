@@ -3,11 +3,15 @@ import { MessagePattern } from '@nestjs/microservices';
 import { Payload } from '@nestjs/microservices';
 
 import { AppService } from './app.service';
+import { ConsentService } from './consent/consent.service';
 
 @Controller()
 export class AppController {
   private readonly logger = new Logger();
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly consentService: ConsentService,
+  ) {}
 
   @MessagePattern('getPatient')
   async getPatient(@Payload() IdDocs: string) {
@@ -16,10 +20,18 @@ export class AppController {
     return response;
   }
 
-  @MessagePattern('getPatientPrivacyConsent')
-  async getPatientPrivacyConsent(@Payload() IdDocs: string) {
-    const response = await this.appService.getPatientPrivacyConsent(IdDocs);
-    this.logger.log('getPatientPrivacyConsent(): ' + JSON.stringify(response));
+  @MessagePattern('getPatientConsent')
+  async getPatientConsent(
+    @Payload('id') id: string,
+    @Payload('category') category?: string,
+    @Payload('status') status?: string,
+  ) {
+    const response = await this.consentService.getPatientConsent(
+      id,
+      category,
+      status,
+    );
+    this.logger.log('getPatientConsent(): ' + JSON.stringify(response));
     return response;
   }
 

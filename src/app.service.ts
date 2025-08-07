@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type * as fhir from 'fhir/r5';
 
 import { DatabaseRepository } from './database/database.repository';
 import { PacientesModel } from './database/models';
@@ -8,14 +9,14 @@ export class AppService {
   private readonly logger = new Logger(AppService.name);
   constructor(private readonly databaseRepository: DatabaseRepository) {}
 
-  async getPatient(IdDocs: string): Promise<fhir4.Patient> {
+  async getPatient(id: string): Promise<fhir.Patient> {
     const patientResult: PacientesModel =
-      await this.databaseRepository.pacientesRepository.getUser(IdDocs);
+      await this.databaseRepository.pacientesRepository.getUser(id);
     const patientLopd =
-      await this.databaseRepository.pdpRepository.getUsersLOPD(IdDocs);
+      await this.databaseRepository.pdpRepository.getUsersLOPD(id);
 
     interface MaritalCode {
-      code: 'D' | 'S' | 'W' | 'M' | 'UN';
+      code: string;
       display: string;
       texto: string;
     }
@@ -33,172 +34,148 @@ export class AppService {
           return { code: 'UN', display: 'Unknown', texto: 'Desconocido' };
       }
     })();
-
-    const patientResource: fhir4.Patient = {
-      resourceType: 'Patient',
-      id: patientResult.NUMERO_HC.toString(),
-      meta: {
-        profile: ['http://hl7.org/fhir/StructureDefinition/Patient'],
-        lastUpdated: new Date().toISOString(),
-      },
-      identifier: [
-        {
-          use: 'official',
-          type: {
-            coding: [
-              {
-                system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-                code: 'NI',
-                display: 'National unique individual identifier',
-              },
-            ],
-          },
-          value: patientResult.CEDULA,
-        },
-        {
-          use: 'usual',
-          type: {
-            coding: [
-              {
-                system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-                code: 'MR',
-                display: 'Medical record number',
-              },
-            ],
-          },
-          value: patientResult.NUMERO_HC.toString(),
-        },
-      ],
-      active: true,
-      name: [
-        {
-          family: `${patientResult.APELLIDO_PATERNO} ${patientResult.APELLIDO_MATERNO}`,
-          _family: {
-            extension: [
-              {
-                url: 'http://hl7.org/fhir/StructureDefinition/humanname-fathers',
-                valueString: patientResult.APELLIDO_PATERNO,
-              },
-              {
-                url: 'http://hl7.org/fhir/StructureDefinition/humanname-mothers',
-                valueString: patientResult.APELLIDO_MATERNO,
-              },
-            ],
-          },
-          given: [
-            patientResult.PRIMER_NOMBRE,
-            patientResult.SEGUNDO_NOMBRE,
-          ].filter((name): name is string => typeof name === 'string'),
-          text: `${patientResult.PRIMER_NOMBRE} ${patientResult.SEGUNDO_NOMBRE} ${patientResult.APELLIDO_PATERNO} ${patientResult.APELLIDO_MATERNO}`,
-          use: 'official',
-        },
-      ],
-      birthDate: patientResult.FECHA_NACIMIENTO
-        ? patientResult.FECHA_NACIMIENTO.toISOString().split('T')[0]
-        : '',
-      gender: patientResult.SEXO === 'M' ? 'male' : 'female',
-      telecom: [
-        {
-          system: 'phone',
-          value: patientResult.TELEFONO,
-          use: 'mobile',
-        },
-        {
-          system: 'email',
-          value: patientResult.EMAIL,
-          use: 'home',
-        },
-      ],
-      address: [
-        {
-          use: 'home',
-          line: [patientResult.DIRRECION_DOMICILIO || ''],
-          district: patientResult.PRQ_CNT_PRV_CODIGO,
-          city: patientResult.PRQ_CNT_CODIGO,
-          state: patientResult.PRQ_CODIGO,
-        },
-        {
-          use: 'work',
-          line: [patientResult.DIRRECION_TRABAJO || ''],
-        },
-      ],
-      maritalStatus: {
-        coding: [
-          {
-            system: 'http://terminology.hl7.org/CodeSystem/v3-MaritalStatus',
-            code: maritalCode.code,
-            display: maritalCode.display,
-          },
-        ],
-        text: maritalCode.texto,
-      },
-      extension: [
-        // Add any necessary extensions here
-      ],
+    const patientId = patientResult.CEDULA;
+    const patientMeta: fhir.Meta = {
+      profile: ['http://hl7.org/fhir/StructureDefinition/Patient'],
+      lastUpdated: new Date().toISOString(),
     };
-    return patientResource;
-  }
-
-  async getPatientPrivacyConsent(IdDocs: string) {
-    const patientResult: PacientesModel =
-      await this.databaseRepository.pacientesRepository.getUser(IdDocs);
-    const consentResult =
-      await this.databaseRepository.pdpRepository.getUsersLOPD(IdDocs);
-    const consentResource: fhir4.Consent = {
-      resourceType: 'Consent',
-      id: consentResult.ID.toString(),
-      meta: {
-        profile: ['http://hl7.org/fhir/Consent'],
-        lastUpdated: consentResult.FECHA_ACT
-          ? consentResult.FECHA_ACT.toISOString()
-          : new Date().toISOString(),
-      },
-      identifier: [
-        {
-          use: 'official',
-          type: {
-            coding: [
-              {
-                system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-                code: 'NI',
-                display: 'National unique individual identifier',
-              },
-            ],
-          },
-          value: consentResult.CEDULA,
-        },
-      ],
-      status: 'active',
-      scope: {
-        coding: [
-          {
-            system: 'http://terminology.hl7.org/CodeSystem/consentscope',
-            code: 'patient-privacy',
-            display: 'Privacy Consent',
-          },
-        ],
-        text: 'Consentimiento de privacidad del paciente',
-      },
-      category: [
-        {
+    const patientIdentifier: Array<fhir.Identifier> = [
+      {
+        use: 'official',
+        system: 'N',
+        type: {
           coding: [
             {
-              system:
-                'http://terminology.hl7.org/CodeSystem/consentcategorycodes',
-              code: 'npp',
-              display: 'Notice of Privacy Practices',
+              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+              code: 'NI',
+              display: 'National unique individual identifier',
             },
           ],
-          text: 'Consentimiento de privacidad',
+        },
+        value: patientResult.CEDULA,
+      },
+      {
+        use: 'usual',
+        type: {
+          coding: [
+            {
+              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+              code: 'MR',
+              display: 'Medical record number',
+            },
+          ],
+        },
+        value: patientResult.NUMERO_HC.toString(),
+      },
+    ];
+
+    const patientName: Array<fhir.HumanName> = [
+      {
+        family: `${patientResult.APELLIDO_PATERNO} ${patientResult.APELLIDO_MATERNO}`,
+        _family: {
+          extension: [
+            {
+              url: 'http://hl7.org/fhir/StructureDefinition/humanname-fathers',
+              valueString: patientResult.APELLIDO_PATERNO,
+            },
+            {
+              url: 'http://hl7.org/fhir/StructureDefinition/humanname-mothers',
+              valueString: patientResult.APELLIDO_MATERNO,
+            },
+          ],
+        },
+        given: [
+          patientResult.PRIMER_NOMBRE,
+          patientResult.SEGUNDO_NOMBRE,
+        ].filter((name): name is string => typeof name === 'string'),
+        text: `${patientResult.PRIMER_NOMBRE} ${patientResult.SEGUNDO_NOMBRE} ${patientResult.APELLIDO_PATERNO} ${patientResult.APELLIDO_MATERNO}`,
+        use: 'official',
+      },
+    ];
+
+    const patientBirthDate = patientResult.FECHA_NACIMIENTO
+      ? patientResult.FECHA_NACIMIENTO.toISOString().split('T')[0]
+      : undefined;
+    const patientGender = patientResult.SEXO === 'M' ? 'male' : 'female';
+    const patientTelecom: fhir.ContactPoint[] | undefined =
+      patientResult.TELEFONO || patientResult.EMAIL
+        ? [
+            ...(patientResult.TELEFONO
+              ? [
+                  {
+                    system: 'phone',
+                    value: patientResult.TELEFONO,
+                    use: 'mobile',
+                  } as fhir.ContactPoint,
+                ]
+              : []),
+            ...(patientResult.EMAIL
+              ? [
+                  {
+                    system: 'email',
+                    value: patientResult.EMAIL,
+                    use: 'home',
+                  } as fhir.ContactPoint,
+                ]
+              : []),
+          ]
+        : undefined;
+    const patientAddress: fhir.Address[] | undefined =
+      patientResult.DIRRECION_DOMICILIO || patientResult.DIRRECION_TRABAJO
+        ? [
+            ...(patientResult.DIRRECION_DOMICILIO
+              ? [
+                  {
+                    use: 'home',
+                    line: [patientResult.DIRRECION_DOMICILIO],
+                    district: patientResult.PRQ_CNT_PRV_CODIGO,
+                    city: patientResult.PRQ_CNT_CODIGO,
+                    state: patientResult.PRQ_CODIGO,
+                  } as fhir.Address,
+                ]
+              : []),
+            ...(patientResult.DIRRECION_TRABAJO
+              ? [
+                  {
+                    use: 'work',
+                    line: [patientResult.DIRRECION_TRABAJO],
+                  } as fhir.Address,
+                ]
+              : []),
+          ]
+        : undefined;
+
+    const patientMaritalStatus: fhir.CodeableConcept = {
+      coding: [
+        {
+          system: 'http://terminology.hl7.org/CodeSystem/v3-MaritalStatus',
+          code: maritalCode.code,
+          display: maritalCode.display,
         },
       ],
-      patient: {
-        reference: `Patient/${patientResult.NUMERO_HC}`,
-        display: `${patientResult.PRIMER_NOMBRE} ${patientResult.SEGUNDO_NOMBRE} ${patientResult.APELLIDO_PATERNO} ${patientResult.APELLIDO_MATERNO}`,
-      },
+      text: maritalCode.texto,
     };
-
-    return consentResource;
+    const patientExtension: Array<fhir.Extension> = [
+      // Add any necessary extensions here
+    ];
+    const patientLink: Array<fhir.PatientLink> = [
+      // Add any necessary extensions here
+    ];
+    const patientResource: fhir.Patient = {
+      resourceType: 'Patient',
+      id: patientId,
+      meta: patientMeta,
+      identifier: patientIdentifier,
+      active: true,
+      name: patientName,
+      birthDate: patientBirthDate,
+      gender: patientGender,
+      telecom: patientTelecom,
+      address: patientAddress,
+      maritalStatus: patientMaritalStatus,
+      link: patientLink,
+    };
+    return patientResource;
   }
 
   async createUserLOPD(data: {
