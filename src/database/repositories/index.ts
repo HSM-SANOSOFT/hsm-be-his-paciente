@@ -1,6 +1,7 @@
-import {  } from '';
+import { PacientesRepository } from './pacientes.repository';
+import { PdpRepository } from './pdp.repository';
 
-export const DatabaseRepositories = [
-];
+export const DatabaseRepositories = [PacientesRepository, PdpRepository];
 
-export * from '';
+export * from './pacientes.repository';
+export * from './pdp.repository';

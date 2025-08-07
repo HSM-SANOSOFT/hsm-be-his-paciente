@@ -1,18 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
-import {
-  CgRefCodeService,
-  CrmChatMenuPrincipalRepository,
-  SgiPilaresService,
-  VwServiciosChatService,
-} from './repositories';
+import { PacientesRepository, PdpRepository } from './repositories';
 
 @Injectable()
 export class DatabaseRepository {
   constructor(
-    public cgRefCodeService: CgRefCodeService,
-    public sgiPilaresSerivice: SgiPilaresService,
-    public vwServiciosChatService: VwServiciosChatService,
-    public crmChatMenuPrincipalService: CrmChatMenuPrincipalRepository,
+    public readonly pacientesRepository: PacientesRepository,
+    public readonly pdpRepository: PdpRepository,
   ) {}
 }
