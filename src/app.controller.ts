@@ -13,13 +13,6 @@ export class AppController {
     private readonly consentService: ConsentService,
   ) {}
 
-  @MessagePattern('getPatient')
-  async getPatient(@Payload() IdDocs: string) {
-    const response = await this.appService.getPatient(IdDocs);
-    this.logger.log('getPatient(): ' + JSON.stringify(response));
-    return response;
-  }
-
   @MessagePattern('getPatientConsent')
   async getPatientConsent(
     @Payload('id') id: string,

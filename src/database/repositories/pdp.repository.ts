@@ -10,7 +10,7 @@ export class PdpRepository {
   private readonly logger = new Logger();
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async getUsersLOPD(IdDocs: string) {
+  async getPatientLOPD(IdDocs: string) {
     const results = await this.databaseService.execute<PdpModel>(
       `SELECT * FROM PDP WHERE CEDULA = :ID`,
       [IdDocs],
@@ -28,7 +28,7 @@ export class PdpRepository {
     }
   }
 
-  async createUserLOPD(data: {
+  async createPatientLOPD(data: {
     CEDULA: string;
     STATUS: string;
     TIPO_ENVIO: string;
@@ -71,7 +71,7 @@ export class PdpRepository {
     };
   }
 
-  async updateUserLOPD(data: {
+  async updatePatientLOPD(data: {
     CEDULA: string;
     STATUS: string;
     TIPO_ENVIO: string;

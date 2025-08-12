@@ -10,10 +10,10 @@ export class PacientesRepository {
   private readonly logger = new Logger();
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async getUser(IdDocs: string) {
+  async getPatient(Id: number | string) {
     const results = await this.databaseService.execute<PacientesModel>(
-      `SELECT * FROM PACIENTES WHERE  CEDULA = :ID`,
-      [IdDocs],
+      `SELECT * FROM PACIENTES WHERE NUMERO_HC = :ID OR CEDULA = :ID`,
+      { ID: Id },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
@@ -23,7 +23,7 @@ export class PacientesRepository {
     } else {
       throw new RpcException({
         statusCode: HttpStatus.NOT_FOUND,
-        message: `No records found for ID: ${IdDocs}`,
+        message: `No records found for ID: ${Id}`,
       });
     }
   }

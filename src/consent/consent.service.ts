@@ -13,7 +13,7 @@ export class ConsentService {
     status?: string,
   ): Promise<fhir.Consent | fhir.Bundle> {
     const patientResult: PacientesModel =
-      await this.databaseRepository.pacientesRepository.getUser(id);
+      await this.databaseRepository.pacientesRepository.getPatient(id);
 
     if (!category) {
       this.logger.log(`No category provided, returning patient all consent`);
@@ -48,7 +48,7 @@ export class ConsentService {
     status?: string,
   ): Promise<fhir.Consent> {
     const consentResult =
-      await this.databaseRepository.pdpRepository.getUsersLOPD(id);
+      await this.databaseRepository.pdpRepository.getPatientLOPD(id);
 
     const consentId = consentResult.ID.toString();
     const consentMeta: fhir.Meta = {
