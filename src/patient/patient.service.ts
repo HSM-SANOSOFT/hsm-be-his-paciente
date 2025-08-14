@@ -223,4 +223,10 @@ export class PatientService {
     };
     return patientResource;
   }
+
+  async getPaciente(id: string) {
+    const patientResult: PacientesModel =
+      await this.databaseRepository.pacientesRepository.getPatient(id);
+    const patientId = patientResult.NUMERO_HC;
+  }
 }
