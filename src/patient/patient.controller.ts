@@ -14,7 +14,9 @@ export class PatientController {
     @Payload()
     payload: GetPatientType,
   ) {
-    const response = await this.patientService.get(payload);
+    const id: number | string =
+      'param' in payload ? payload.param.id : payload.query.identifier.value;
+    const response = await this.patientService.getPaciente(id);
     this.logger.log('getPatient(): ' + JSON.stringify(response));
     return response;
   }

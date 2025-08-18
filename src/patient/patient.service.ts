@@ -1,3 +1,19 @@
+import { Core } from '@hsm-sanosoft/hsm-types';
+import { ContactoCode } from '@hsm-sanosoft/hsm-types/dist/core/contacto';
+import { NacionalidadCode } from '@hsm-sanosoft/hsm-types/dist/core/demografica';
+import { DocumentoIdentidadCode } from '@hsm-sanosoft/hsm-types/dist/core/documento_identidad';
+import {
+  InfoContacto,
+  InfoIdentificacion,
+  InfoNacimiento,
+  InfoNombres,
+  InfoResidencia,
+} from '@hsm-sanosoft/hsm-types/dist/core/informacion';
+import {
+  Metadata,
+  SuccessResponse,
+} from '@hsm-sanosoft/hsm-types/dist/core/response';
+import { Paciente } from '@hsm-sanosoft/hsm-types/dist/domain/his';
 import { Injectable, Logger } from '@nestjs/common';
 import type * as fhir from 'fhir/r5';
 import { DatabaseRepository } from 'src/database/database.repository';
@@ -224,9 +240,64 @@ export class PatientService {
     return patientResource;
   }
 
-  async getPaciente(id: string) {
+  async getPaciente(id: number | string) {
     const patientResult: PacientesModel =
       await this.databaseRepository.pacientesRepository.getPatient(id);
-    const patientId = patientResult.NUMERO_HC;
+    const pacienteId = patientResult.NUMERO_HC;
+    const pacienteNombres: InfoNombres = {
+      primerNombre: patientResult.PRIMER_NOMBRE,
+      segundoNombre: patientResult.SEGUNDO_NOMBRE,
+      apellidoPaterno: patientResult.APELLIDO_PATERNO,
+      apellidoMaterno: patientResult.APELLIDO_MATERNO,
+    };
+    const pacienteIdentificacion: InfoIdentificacion = [
+      {
+        tipo: patientResult.TIPO_IDENTIFICACION as DocumentoIdentidadCode,
+        numero: patientResult.CEDULA,
+      },
+    ];
+    const pacienteSexo: Core.sexo.SexoCode =
+      patientResult.SEXO as Core.sexo.SexoCode;
+    const pacienteNacimiento: InfoNacimiento = {
+      fecha: patientResult.FECHA_NACIMIENTO,
+      lugar: patientResult.LUGAR_NACIMIENTO,
+      nacionalidad: patientResult.NACIONALIDAD as NacionalidadCode,
+    };
+    const pacienteContacto: InfoContacto = [
+      {
+        tipo: ContactoCode.CELULAR,
+        valor: patientResult.TELEFONO || '',
+      },
+      {
+        tipo: ContactoCode.EMAIL,
+        valor: patientResult.EMAIL || '',
+      },
+    ];
+    const pacienteResidencia: InfoResidencia = [
+      {
+        direccion: patientResult.DIRRECION_DOMICILIO || '',
+        parroquia: patientResult.PRQ_CNT_CODIGO || '',
+        canton: patientResult.PRQ_CNT_PRV_CODIGO || '',
+        provincia: patientResult.PRQ_CODIGO || '',
+      },
+    ];
+    const metadata: Metadata = {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const paciente: Paciente = {
+      id: pacienteId,
+      nombres: pacienteNombres,
+      identificacion: pacienteIdentificacion,
+      sexo: pacienteSexo,
+      nacimiento: pacienteNacimiento,
+      contacto: pacienteContacto,
+      residencia: pacienteResidencia,
+    };
+    const response: SuccessResponse<Paciente> = {
+      data: paciente,
+      meta: metadata,
+    };
+    return response;
   }
 }
